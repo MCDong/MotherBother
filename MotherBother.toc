@@ -1,0 +1,18 @@
+## Interface: 80000
+## Title: MotherBother
+## Notes: Assign your raid group into arbitrary units
+## Author: mcdong
+## OptDeps: Ace3
+## Version: 0.1
+
+#@no-lib-strip@
+libs\LibStub\LibStub.lua
+libs\AceAddon-3.0\AceAddon-3.0.xml
+libs\AceConsole-3.0\AceConsole-3.0.xml
+libs\AceGUI-3.0\AceGUI-3.0.xml
+#@end-no-lib-strip@
+
+libs\LibSimpleSticky\LibSimpleSticky.lua
+
+## Core ##
+MotherBother.lua
