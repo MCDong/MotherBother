@@ -1,32 +1,33 @@
-MotherBother = LibStub("AceAddon-3.0"):NewAddon("MotherBother", "AceConsole-3.0")
+MB = LibStub("AceAddon-3.0"):NewAddon("MB", "AceConsole-3.0")
 local AceGUI = LibStub("AceGUI-3.0")
 local Sticky = LibStub("LibSimpleSticky-1.0")
 
-function MotherBother:OnInitialize()
-    MotherBother:RegisterChatCommand("motherbother", "ToggleWindow")
-    MotherBother:RegisterChatCommand("mb", "ToggleWindow")
-    MotherBother:RegisterChatCommand("mbd", "Debug")
+function MB:OnInitialize()
+    MB:RegisterChatCommand("MB", "ToggleWindow")
+    MB:RegisterChatCommand("mb", "ToggleWindow")
+    MB:RegisterChatCommand("mbd", "Debug")
 end
-function MotherBother:OnEnable()
+function MB:OnEnable()
 end
-function MotherBother:OnDisable()
+function MB:OnDisable()
 end
 
 local GetNumGroupMembers = GetNumGroupMembers
 
-function MotherBother:ToggleWindow()
-    if not MotherBother.window then
-        MotherBother:CreateWindow()
+function MB:ToggleWindow()
+    if not MB.window then
+        MB:CreateWindow()
     end
-    if MotherBother.window:IsShown() then
-        MotherBother.window:Hide()
+    if MB.window:IsShown() then
+        MB.window:Hide()
     else
-        MotherBother.window:Show()
+        MB.window:Show()
     end
 end
 
-function MotherBother:CreateWindow()
-    if MotherBother.window then
+local wstat = {width = 1200, height = 720, top = nil, left = nil}
+function MB:CreateWindow()
+    if MB.window then
         return
     end
 
@@ -35,15 +36,16 @@ function MotherBother:CreateWindow()
     window:SetTitle("Assign Subgroups")
     window:SetLayout("Fill")
     window:Hide()
-    window:SetStatusTable({width = 1200, height = 720})
-    MotherBother.window = window
+    window:SetStatusTable(wstat)
+    MB.window = window
 
+    -- Create global scroll frame to hold all UI elements inside window
     local fillScroll = AceGUI:Create("ScrollFrame")
     fillScroll:SetRelativeWidth(1)
     fillScroll:SetLayout("List")
-    fillScroll:SetHeight(800)
-    MotherBother.fs = fillScroll
-    assert(MotherBother.fs)
+    fillScroll:SetHeight(window.status.height)
+    MB.fs = fillScroll
+    assert(MB.fs)
     window:AddChild(fillScroll)
 
     -- Create Roster Frame
@@ -51,7 +53,7 @@ function MotherBother:CreateWindow()
     rosterFrame:SetTitle("Group Members")
     rosterFrame:SetLayout("Flow")
     rosterFrame:SetRelativeWidth(1)
-    MotherBother.window.r = rosterFrame
+    MB.window.r = rosterFrame
     fillScroll:AddChild(rosterFrame)
 
     -- Create heading divider
@@ -66,7 +68,7 @@ function MotherBother:CreateWindow()
     addGroupBtn:SetCallback(
         "OnClick",
         function()
-            MotherBother:CreateSubgroup()
+            MB:CreateSubgroup()
         end
     )
     fillScroll:AddChild(addGroupBtn)
@@ -77,7 +79,7 @@ function MotherBother:CreateWindow()
     subGroupHolder:SetRelativeWidth(1)
     subGroupHolder:SetAutoAdjustHeight(true)
     subGroupHolder:SetLayout("List")
-    MotherBother.gh = subGroupHolder
+    MB.gh = subGroupHolder
     fillScroll:AddChild(subGroupHolder)
 
     -- Clear button, rebuild window
@@ -86,18 +88,22 @@ function MotherBother:CreateWindow()
     addGroupBtn:SetCallback(
         "OnClick",
         function(widget)
-            AceGUI:Release(MotherBother.window)
-            MotherBother.window = nil
-            MotherBother:CreateWindow()
-            MotherBother.window:Show()
-            -- MotherBother.gh:PerformLayout()
+            wstat = window.status
+            AceGUI:Release(MB.window)
+            MB.window = nil
+            MB:CreateWindow()
+            MB.window:Show()
+            -- MB.gh:PerformLayout()
         end
     )
     fillScroll:AddChild(addGroupBtn)
-    MotherBother:BuildRoster()
+
+    -- Fill the roster and build the labels
+    MB:GetGroupMembers()
+    MB:BuildRoster()
 end
 
-function MotherBother:CreateSubgroup()
+function MB:CreateSubgroup()
     local g = AceGUI:Create("InlineGroup")
     g:SetLayout("Flow")
     g:SetRelativeWidth(1)
@@ -108,37 +114,39 @@ function MotherBother:CreateSubgroup()
     b:SetCallback(
         "OnClick",
         function()
-            MotherBother.gh:ReleaseChildren()
-            MotherBother.gh:PerformLayout()
+            MB.gh:ReleaseChildren()
+            MB.gh:PerformLayout()
             print("released" .. tostring(g))
             rel = true
         end
     )
     g:AddChild(b)
-    MotherBother.gh:AddChild(g)
+    MB.gh:AddChild(g)
 end
 
 local roster_units = {}
 local groups = {}
-function MotherBother:BuildRoster()
-    if not MotherBother.window then
-        return
-    end
-    MotherBother.window.r:ReleaseChildren()
+function MB:GetGroupMembers()
     local numInGroup = GetNumGroupMembers()
     if numInGroup > 0 then
         local prefix = IsInRaid() and "raid" or "party"
         for i = 1, numInGroup do
             local playername = GetUnitName(prefix .. i, false)
-            local _, playerclass = UnitClass(prefix .. i)
+            local _,
+                playerclass = UnitClass(prefix .. i)
             table.insert(roster_units, {name = playername, class = playerclass, group = nil})
         end
     else
-        print("MotherBother can't find anyone in your group")
+        print("MB can't find anyone in your group")
     end
+end
 
+function MB:BuildRoster()
+    if not MB.window then
+        return
+    end
+    MB.window.r:ReleaseChildren()
     for i, pinfo in ipairs(roster_units) do
-        -- DEFAULT_CHAT_FRAME:AddMessage(""..pinfo[1]..pinfo[2])
         local c = RAID_CLASS_COLORS[string.upper(pinfo["class"])]
         if c then
             local sg = AceGUI:Create("InlineGroup")
@@ -149,15 +157,16 @@ function MotherBother:BuildRoster()
             l:SetText(pinfo["name"])
             l:SetColor(c.r, c.g, c.b)
             l:SetHighlight("Interface\\PaperDollInfoFrame\\UI-Character-Tab-Highlight")
+            l:SetUserData({p = pinfo})
             sg:AddChild(l)
-            MotherBother.window.r:AddChild(sg)
+            MB.window.r:AddChild(sg)
         end
     end
-    assert(MotherBother.fs)
-    MotherBother.fs:PerformLayout()
+    assert(MB.fs)
+    MB.fs:PerformLayout()
 end
 
-function MotherBother:Debug(input)
+function MB:Debug(input)
     if input == "create" then
         local classes = {
             "Warrior",
@@ -192,5 +201,5 @@ function MotherBother:Debug(input)
             table.insert(roster_units, {name = tname, class = tclass, group = nil})
         end
     end
-    MotherBother:BuildRoster()
+    MB:BuildRoster()
 end

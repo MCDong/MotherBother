@@ -3,7 +3,7 @@
 ## Notes: Assign your raid group into arbitrary units
 ## Author: mcdong
 ## OptDeps: Ace3
-## Version: 0.1
+## Version: 0.02a
 
 #@no-lib-strip@
 libs\LibStub\LibStub.lua
@@ -15,4 +15,5 @@ libs\AceGUI-3.0\AceGUI-3.0.xml
 libs\LibSimpleSticky\LibSimpleSticky.lua
 
 ## Core ##
-MotherBother.lua
+MotherBotherCore.lua
+# MotherBother.lua
