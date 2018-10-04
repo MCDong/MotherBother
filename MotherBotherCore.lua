@@ -1,4 +1,4 @@
-MB = LibStub("AceAddon-3.0"):NewAddon("MotherBother", "AceConsole-3.0")
+MB = LibStub("AceAddon-3.0"):NewAddon("MotherBother", "AceConsole-3.0", "AceEvent-3.0")
 local AceGUI = LibStub("AceGUI-3.0")
 local Sticky = LibStub("LibSimpleSticky-1.0")
 
