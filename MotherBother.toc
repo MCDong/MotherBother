@@ -1,9 +1,12 @@
 ## Interface: 80000
+## Version: @project-version@
 ## Title: MotherBother
 ## Notes: Assign your raid group into arbitrary units
 ## Author: mcdong
 ## OptDeps: Ace3
 ## Version: 0.02a
+## X-Curse-Project-ID: 304178
+## X-WoWI-ID: 24834
 
 #@no-lib-strip@
 libs\LibStub\LibStub.lua

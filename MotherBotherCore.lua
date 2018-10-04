@@ -8,6 +8,7 @@ function MB:OnInitialize()
     MB:RegisterChatCommand("mbd", "Debug")
 end
 function MB:OnEnable()
+    self:RegisterEvent("GROUP_ROSTER_UPDATE")
 end
 function MB:OnDisable()
 end
@@ -33,7 +34,7 @@ function MB:ToggleWindow(input)
         MB.window:SetCallback(
             "OnClose",
             function(widget)
-                MB.savedtext = MB.ed:GetText()
+                -- MB.savedtext = MB.ed:GetText()
                 AceGUI:Release(widget)
                 MB.window = nil
             end
@@ -43,11 +44,6 @@ function MB:ToggleWindow(input)
         AceGUI:Release(MB.window)
         MB.window = nil
     end
-    -- if MB.window:IsShown() then
-    --     MB.window:Hide()
-    -- else
-    --     MB.window:Show()
-    -- end
 end
 
 function MB:GetGroupMembers()
@@ -63,7 +59,7 @@ function MB:GetGroupMembers()
             table.insert(MB.roster, {name = playername, class = playerclass, role = playerrole})
         end
     else
-        print("MB can't find anyone in your group")
+        print("MotherBother can't find anyone in your group")
     end
 end
 
@@ -101,8 +97,11 @@ local function insertIntoEmpty(player, limit)
     table.insert(orders, _t)
 end
 
-function MB:BuildDefaultRoster()
-    MB:GetGroupMembers()
+function MB:BuildDefaultRoster(d)
+    d = d or false -- d for debug groups
+    if not d then
+        MB:GetGroupMembers()
+    end
     orders = {}
     orders[0] = MB.roster
     orders[1] = {}
@@ -145,16 +144,39 @@ local function split(s, delimiter)
     return result;
 end
 
+function MB:GROUP_ROSTER_UPDATE()
+    if not MB.savedtext then
+        MB:CreateSimpleWindow(true)
+    end
+end
+
+StaticPopupDialogs["MB_CONFIRM_RESET"] = {
+    text = "This will DELETE all changes you've made and rebuild from scratch. Are you sure?",
+    button1 = YES,
+    button2 = CANCEL,
+    OnAccept = function()
+        MB:BuildDefaultRoster()
+        MB.savedtext = nil
+        MB.ed:SetText(buildRoster())
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3
+}
+
 function MB:CreateSimpleWindow(rebuild)
     if MB.window then
         return
     end
-    local wstat = {width = 300, height = 300, top = nil, left = nil}
+    local wstat = {width = 300, height = 270, top = nil, left = nil}
     -- Create Window
     local window = AceGUI:Create("Window")
     window:SetLayout("Fill")
     window:Hide()
     window:SetStatusTable(wstat)
+    window:SetTitle("MotherBother")
+    window:EnableResize(false)
     MB.window = window
 
     -- Create global scroll frame to hold all UI elements inside window
@@ -165,45 +187,72 @@ function MB:CreateSimpleWindow(rebuild)
     MB.fs = fillScroll
     window:AddChild(fillScroll)
 
-    local btn = AceGUI:Create("Button")
-    btn:SetText("Report")
-    btn:SetCallback("OnClick",
+    -- Create button frame
+    local editButtonFrame = AceGUI:Create("SimpleGroup")
+    editButtonFrame:SetLayout("Flow")
+    editButtonFrame:SetRelativeWidth(1)
+    MB.ebf = editButtonFrame
+    fillScroll:AddChild(editButtonFrame)
+
+    -- Report button
+    local reportBtn = AceGUI:Create("Button")
+    reportBtn:SetText("Report to Raid")
+    
+    reportBtn:SetCallback("OnClick",
         function(widget)
             for i,v in ipairs(split(MB.ed:GetText(), '\n')) do
                 SendChatMessage(v , "RAID" , nil , "");
             end
         end    
     )
+    reportBtn:SetRelativeWidth(.75)
+    editButtonFrame:AddChild(reportBtn)
 
+    -- Reset button
+
+    local resetBtn = AceGUI:Create("Button")
+    resetBtn:SetText("Reset")
+    resetBtn:SetCallback("OnClick",
+        function(widget)
+            StaticPopup_Show("MB_CONFIRM_RESET")
+        end    
+    )
+    resetBtn:SetRelativeWidth(.25)
+    editButtonFrame:AddChild(resetBtn)
+
+    -- Text box with groups
     local editbox = AceGUI:Create("MultiLineEditBox")
     editbox:SetRelativeWidth(1)
     editbox:SetLabel("Assign Groups")
     editbox:SetNumLines(10)
+    -- Setting MB.savedtext is how we flag that there's been user input
     if not MB.savedtext or rebuild then
         MB:BuildDefaultRoster()
-        MB.savedtext = buildRoster()
+        MB.savedtext = nil
+        editbox:SetText(buildRoster())
+    else
+        editbox:SetText(MB.savedtext)
     end
-    editbox:SetText(MB.savedtext)
+    editbox.button:Hide()
     -- editbox:SetCallback(
     --     "OnEnterPressed",
     --     function(widget, text)
-    --         MB.savedtext = editBox:GetText()
+    --         MB.savedtext = MB.ed:GetText()
     --     end
     -- )
     -- editbox:SetCallback(
     --     "OnEditFocusLost",
     --     function(widget)
-    --         MB.savedtext = editBox:GetText()
+    --         MB.savedtext = MB.ed:GetText()
     --     end
     -- )
-    -- editbox:SetCallback(
-    --     "OnTextChanged",
-    --     function(widget, text)
-    --         MB.savedtext = editBox:GetText()
-    --     end
-    -- )
+    editbox:SetCallback(
+        "OnTextChanged",
+        function(widget, text)
+            MB.savedtext = MB.ed:GetText()
+        end
+    )
     MB.ed = editbox
-    fillScroll:AddChild(btn)
     fillScroll:AddChild(editbox)
 end
 
@@ -321,9 +370,9 @@ function MB:Debug(input)
             end
             if #MB.roster < 40 then
                 local r = ""
-                if i == 1 then
+                if j == 1 then
                     r = "TANK"
-                elseif i == 5 then
+                elseif j == 5 then
                     r = "HEALER"
                 else
                     r = "DAMAGER"
@@ -342,6 +391,7 @@ function MB:Debug(input)
         end
     end
     orders[0] = MB.roster
-    MB:BuildDefaultRoster()
+    MB:BuildDefaultRoster(true)
+    MB.savedtext = buildRoster()
     print(buildRoster())
 end
