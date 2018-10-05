@@ -18,6 +18,7 @@ local GetNumGroupMembers = GetNumGroupMembers
 local orders = {}
 orders[0] = {}
 orders[1] = {}
+MB.roster = {}
 
 function MB:ToggleWindow(input)
     if not MB.window then
@@ -52,14 +53,15 @@ function MB:GetGroupMembers()
     if numInGroup > 0 then
         local prefix = IsInRaid() and "raid" or "party"
         for i = 1, numInGroup do
-            local playername, _ = UnitName(prefix .. i)
+            local unitId = prefix..i
+            local playerguid = UnitGUID(unitId)
+            local playername,
+                _ = UnitName(unitId)
             local _,
-                playerclass = UnitClass(prefix .. i)
-            local playerrole = UnitGroupRolesAssigned(prefix .. i)
-            table.insert(MB.roster, {name = playername, class = playerclass, role = playerrole})
+                playerclass = UnitClass(unitId)
+            local playerrole = UnitGroupRolesAssigned(unitId)
+            table.insert(MB.roster, {guid = playerguid, name = playername, class = playerclass, role = playerrole})
         end
-    else
-        print("MotherBother can't find anyone in your group")
     end
 end
 
@@ -87,7 +89,7 @@ local function insertIntoEmpty(player, limit)
         end
     end
     for i, v in ipairs(orders) do
-        if #v < limit and i~= 1 then
+        if #v < limit and i ~= 1 then
             table.insert(orders[i], player)
             return
         end
@@ -137,17 +139,20 @@ local function buildRoster()
 end
 
 local function split(s, delimiter)
-    result = {};
-    for match in (s..delimiter):gmatch("(.-)"..delimiter) do
-        table.insert(result, match);
+    result = {}
+    for match in (s .. delimiter):gmatch("(.-)" .. delimiter) do
+        table.insert(result, match)
     end
-    return result;
+    return result
 end
 
 function MB:GROUP_ROSTER_UPDATE()
     if not MB.savedtext then
-        MB:CreateSimpleWindow(true)
+        MB:BuildDefaultRoster()
+        pcall(function(t) MB.ed:SetText(t) end, buildRoster())
+        return
     end
+
 end
 
 StaticPopupDialogs["MB_CONFIRM_RESET"] = {
@@ -197,13 +202,14 @@ function MB:CreateSimpleWindow(rebuild)
     -- Report button
     local reportBtn = AceGUI:Create("Button")
     reportBtn:SetText("Report to Raid")
-    
-    reportBtn:SetCallback("OnClick",
+
+    reportBtn:SetCallback(
+        "OnClick",
         function(widget)
-            for i,v in ipairs(split(MB.ed:GetText(), '\n')) do
-                SendChatMessage(v , "RAID" , nil , "");
+            for i, v in ipairs(split(MB.ed:GetText(), "\n")) do
+                SendChatMessage(v, "RAID", nil, "")
             end
-        end    
+        end
     )
     reportBtn:SetRelativeWidth(.75)
     editButtonFrame:AddChild(reportBtn)
@@ -212,10 +218,11 @@ function MB:CreateSimpleWindow(rebuild)
 
     local resetBtn = AceGUI:Create("Button")
     resetBtn:SetText("Reset")
-    resetBtn:SetCallback("OnClick",
+    resetBtn:SetCallback(
+        "OnClick",
         function(widget)
             StaticPopup_Show("MB_CONFIRM_RESET")
-        end    
+        end
     )
     resetBtn:SetRelativeWidth(.25)
     editButtonFrame:AddChild(resetBtn)
@@ -255,98 +262,41 @@ function MB:CreateSimpleWindow(rebuild)
     MB.ed = editbox
     fillScroll:AddChild(editbox)
 end
+--
+-- ## TODO for future versions - a way to display the roles in each subgroup
+-- ## instead of raw text.
+-- local function groupLabels(name, od)
+--     local g = AceGUI:Create("InlineGroup")
+--     g:SetRelativeWidth(1)
+--     g:SetLayout("Flow")
+--     g:SetTitle(name)
 
+--     -- local nm = AceGUI:Create("Label")
+--     -- nm:SetText(name..": ")
+--     -- g:AddChild(nm)
 
+--     for i, v in ipairs(od) do
+--         local l = AceGUI:Create("Label")
+--         l:SetText(v.name)
+--         l:SetWidth(90)
+--         local c = RAID_CLASS_COLORS[string.upper(v.class)]
+--         l:SetColor(c.r, c.g, c.b)
+--         g:AddChild(l)
+--     end
+--     return g
+-- end
 
-
-
--- CODE BELOW THIS POINT IS UNFINISHED AND UNUSED
-
-
-
-
-
-local function groupLabels(name, od)
-    local g = AceGUI:Create("InlineGroup")
-    g:SetRelativeWidth(1)
-    g:SetLayout("Flow")
-    g:SetTitle(name)
-
-    -- local nm = AceGUI:Create("Label")
-    -- nm:SetText(name..": ")
-    -- g:AddChild(nm)
-
-    for i, v in ipairs(od) do
-        local l = AceGUI:Create("Label")
-        l:SetText(v.name)
-        l:SetWidth(90)
-        local c = RAID_CLASS_COLORS[string.upper(v.class)]
-        l:SetColor(c.r, c.g, c.b)
-        g:AddChild(l)
-    end
-    return g
-end
-
-local function rosterLabels(f)
-    f:AddChild(groupLabels("Unassigned", orders[0]))
-    for i, v in ipairs(orders) do
-        f:AddChild(groupLabels("Group " .. i, v))
-    end
-end
-
-function MB:CreateWindow()
-    if MB.window then
-        return
-    end
-    local wstat = {width = 1200, height = 720, top = nil, left = nil}
-    -- Create Window
-    local window = AceGUI:Create("Window")
-    window:SetLayout("Fill")
-    window:Hide()
-    window:SetStatusTable(wstat)
-    MB.window = window
-
-    -- Create global scroll frame to hold all UI elements inside window
-    local fillScroll = AceGUI:Create("ScrollFrame")
-    fillScroll:SetRelativeWidth(1)
-    fillScroll:SetLayout("Flow")
-    fillScroll:SetHeight(window.status.height)
-    MB.fs = fillScroll
-    window:AddChild(fillScroll)
-
-    -- Create button frame
-    local editButtonFrame = AceGUI:Create("SimpleGroup")
-    editButtonFrame:SetLayout("Flow")
-    editButtonFrame:SetRelativeWidth(1)
-    MB.ebf = editButtonFrame
-    fillScroll:AddChild(editButtonFrame)
-
-    -- Global simple group to hold subframes (maybe unnecessary)
-    local gsg = AceGUI:Create("SimpleGroup")
-    gsg:SetRelativeWidth(1)
-    gsg:SetLayout("Flow")
-    MB.gsg = gsg
-    fillScroll:AddChild(gsg)
-
-    local editbox = AceGUI:Create("MultiLineEditBox")
-    editbox:SetRelativeWidth(.5)
-    editbox:SetLabel("Assign Groups")
-    editbox:SetNumLines(16)
-    editbox:SetText(buildRoster())
-    MB.ed = editbox
-    fillScroll:AddChild(editbox)
-
-    local orderFrame = AceGUI:Create("InlineGroup")
-    orderFrame:SetRelativeWidth(.5)
-    orderFrame:SetTitle("Assigned Groups")
-    orderFrame:SetLayout("List")
-    rosterLabels(orderFrame)
-    MB.of = orderFrame
-    fillScroll:AddChild(orderFrame)
-end
+-- local function rosterLabels(f)
+--     f:AddChild(groupLabels("Unassigned", orders[0]))
+--     for i, v in ipairs(orders) do
+--         f:AddChild(groupLabels("Group " .. i, v))
+--     end
+-- end
 
 function MB:Debug(input)
-    if not MB.roster then MB.roster = {} end
+    if not MB.roster then
+        MB.roster = {}
+    end
     if input == "create" then
         local classes = {
             "Warrior",
