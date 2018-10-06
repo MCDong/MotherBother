@@ -207,7 +207,7 @@ function MB:CreateSimpleWindow(rebuild)
         "OnClick",
         function(widget)
             for i, v in ipairs(split(MB.ed:GetText(), "\n")) do
-                SendChatMessage(v, "RAID", nil, "")
+                SendChatMessage(v, "INSTANCE_CHAT", nil, "")
             end
         end
     )
