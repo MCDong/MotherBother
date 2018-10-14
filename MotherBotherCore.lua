@@ -52,6 +52,7 @@ function MB:GetGroupMembers()
     local numInGroup = GetNumGroupMembers()
     if numInGroup > 0 then
         local prefix = IsInRaid() and "raid" or "party"
+        MB.prefix = prefix
         for i = 1, numInGroup do
             local unitId = prefix..i
             local playerguid = UnitGUID(unitId)
@@ -207,7 +208,11 @@ function MB:CreateSimpleWindow(rebuild)
         "OnClick",
         function(widget)
             for i, v in ipairs(split(MB.ed:GetText(), "\n")) do
-                SendChatMessage(v, "INSTANCE_CHAT", nil, "")
+                if MB.prefix == "raid" then
+                    SendChatMessage(v, "RAID", nil, "")
+                else
+                    SendChatMessage(v, "PARTY", nil, "")
+                end
             end
         end
     )
